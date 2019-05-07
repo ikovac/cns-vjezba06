@@ -33,30 +33,21 @@ export default ({ getState, dispatch }, next, action) => {
     // remote client will be encrypted with that key.
     // So, we decrypt the messages before reading them.
     //===================================================
-    let encrypt_key = undefined;
-    let hmac_key = undefined;
-    let hmac = undefined;
     if(key) {
-      encrypt_key = key.slice(0,32);
-      hmac_key = key.slice(32);
+      /* console.log("MSG IS");
+      console.log(msg); */
+      const {iv, content: ciphertext, tag} = msg;
+      console.log("IV: ", iv);
+      console.log("Ciphertext: ", ciphertext);
+      console.log("TAG: ", tag);
+      let msgContent = iv + ciphertext + tag;
+      console.log("msgContent: ", msgContent);
 
-      hmac = crypto.createHmac('sha256', hmac_key);
-      
-      let recived_msg = {... msg};
-      // recived_msg.timestamp = Date.now();
-      delete recived_msg.authTag;
-
-      const serializedMsg = JSON.stringify(recived_msg);
-      hmac.update(serializedMsg);
-      const authTag = hmac.digest().slice(0, 16);
-
-      if(!crypto.timingSafeEqual(Buffer.from(msg.authTag.data), authTag)) {
-        msg.content = 'AUTHENTICATION FAILURE';
-        dispatch(serverMsg(msg));
-        return;
+      try {
+        msg.content = CryptoProvider.decrypt('GCM', {key, msgContent});
+      } catch(err) {
+        console.log(err);
       }
-
-      msg.content = CryptoProvider.decrypt('CBC', {key: encrypt_key, ciphertext: msg.content, iv: Buffer.from(msg.iv, 'hex')}).plaintext;
     }
   }
 

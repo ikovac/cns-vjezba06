@@ -34,16 +34,9 @@ export default ({ getState, dispatch }, next, action) => {
   //===================================================
 
   let encryptedContent = undefined;
-  let encrypt_key = undefined;
-  let hmac_key = undefined;
-  let hmac = undefined;
-  if(key) {
-    encrypt_key = key.slice(0,32);
-    hmac_key = key.slice(32);
 
-    hmac = crypto.createHmac('sha256', hmac_key);
-    
-    encryptedContent = CryptoProvider.encrypt('CBC', {key: encrypt_key, plaintext: action.payload, iv: crypto.randomBytes(16)});
+  if(key) {
+    encryptedContent = CryptoProvider.encrypt('GCM', {key, plaintext: action.payload, iv: crypto.randomBytes(12)});
   }
 
   const msg = {
@@ -52,15 +45,9 @@ export default ({ getState, dispatch }, next, action) => {
     nickname,
     timestamp: Date.now(),
     content: encryptedContent ? encryptedContent.ciphertext : action.payload,
-    iv: encryptedContent ? encryptedContent.iv : undefined
+    iv: encryptedContent ? encryptedContent.iv : undefined,
+    tag: encryptedContent ? encryptedContent.tag : undefined
   };
-
-  if(key) {
-    const serializedMsg = JSON.stringify(msg);
-    hmac.update(serializedMsg);
-    const authTag = hmac.digest().slice(0, 16);
-    msg.authTag = authTag;
-  }
 
   serverAPI.send(msg).then(dispatch(msgSent(msg)));
 };
